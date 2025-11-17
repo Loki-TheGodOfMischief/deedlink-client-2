@@ -1,46 +1,76 @@
+import React from "react";
+import { FaStore, FaTimes } from "react-icons/fa";
 import type { Marketplace } from "../../../types/marketplace";
 
 interface MarketplaceBannerProps {
-  marketPlaceData: Marketplace[] | undefined;
-  onRemoveListing: (marketId: string) => void;
+  marketPlaceData?: Marketplace[];
+  onRemoveListing: (marketId: string, listingId: string) => void;
 }
 
-const MarketplaceBanner = ({ marketPlaceData, onRemoveListing }: MarketplaceBannerProps) => {
-  if (!marketPlaceData || marketPlaceData.filter(m => m.status === "open_to_sale").length === 0) {
+const MarketplaceBanner: React.FC<MarketplaceBannerProps> = ({
+  marketPlaceData,
+  onRemoveListing,
+}) => {
+  const activeListings = marketPlaceData?.filter(m => m.status === "open_to_sale") || [];
+
+  if (activeListings.length === 0) {
     return null;
   }
 
   return (
-    <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 text-emerald-800 px-5 py-5 rounded-2xl shadow-sm flex-col">
-      <span className="font-medium bg-white rounded-xl p-4 shadow-sm border border-emerald-100 w-full flex flex-col">
-        This deed is currently listed on the open market.
-      </span>
-      {marketPlaceData
-        .filter(m => m.status === "open_to_sale")
-        .map((item) => (
-          <div key={item._id} className="bg-white rounded-xl p-4 mt-2 shadow-sm border border-emerald-100 w-full flex flex-col">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-              <p><span className="font-semibold">Market ID:</span> {item.marketPlaceId}</p>
-              <p><span className="font-semibold">Token ID:</span> {item.tokenId}</p>
-              <p><span className="font-semibold">Share:</span> {item.share}%</p>
-              <p><span className="font-semibold">Amount:</span> {item.amount} ETH</p>
-              <p><span className="font-semibold">Description:</span> {item.description}</p>
-            </div>
-            <p className="text-md text-emerald-700 mt-2">
-              Listed on: {item.timestamp ? new Date(item.timestamp).toLocaleString() : "N/A"}
+    <div className="w-full max-w-sm mb-4">
+      <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl shadow-lg p-6 text-white">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 bg-white/20 rounded-lg">
+            <FaStore size={24} />
+          </div>
+          <div>
+            <h3 className="text-xl font-bold">Listed on Marketplace</h3>
+            <p className="text-sm text-blue-100">
+              {activeListings.length} active {activeListings.length === 1 ? 'listing' : 'listings'}
             </p>
-            {item._id && typeof item._id === 'string' && (
-              <div className="w-full flex items-end justify-end mt-4">
-                <button 
-                  onClick={() => onRemoveListing(item._id ?? "")} 
-                  className="py-2 px-4 rounded-md bg-red-600 cursor-pointer hover:bg-red-700 text-white transition-colors font-medium"
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          {activeListings.map((listing) => (
+            <div
+              key={listing._id}
+              className="bg-white/10 rounded-lg p-4 backdrop-blur-sm"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold">Share: {listing.share}%</span>
+                </div>
+                <button
+                  onClick={() => onRemoveListing(listing._id!, listing.marketPlaceId)}
+                  className="p-1.5 hover:bg-white/20 rounded-lg transition"
+                  title="Remove listing"
                 >
-                  Remove Selling Ad
+                  <FaTimes size={14} />
                 </button>
               </div>
-            )}
-          </div>
-        ))}
+
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-blue-100">Price</span>
+                <span className="text-lg font-bold">{listing.amount} ETH</span>
+              </div>
+
+              {listing.description && (
+                <p className="text-xs text-blue-100 mt-2 line-clamp-2">
+                  {listing.description}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-4 pt-4 border-t border-white/20">
+          <p className="text-xs text-blue-100">
+            Your listing is visible to all potential buyers in the marketplace.
+          </p>
+        </div>
+      </div>
     </div>
   );
 };

@@ -7,6 +7,7 @@ import { useLoader } from "../../contexts/LoaderContext";
 import { useWallet } from "../../contexts/WalletContext";
 import { ethers } from "ethers";
 import { buyFromMarketplace } from "../../web3.0/marketService";
+import { updateMarketPlace } from "../../api/api";
 
 interface BuyMarketplacePopupProps {
   marketplace: Marketplace;
@@ -54,6 +55,12 @@ const BuyMarketplacePopup: React.FC<BuyMarketplacePopupProps> = ({
       );
 
       if (result) {
+        if (marketplace._id) {
+          await updateMarketPlace(marketplace._id, {
+            to: account
+          });
+        }
+
         showToast("Purchase successful!", "success");
         onSuccess();
         onClose();

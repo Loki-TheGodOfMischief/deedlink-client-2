@@ -16,7 +16,11 @@ import LandDetails from "../components/adeed/ui/LandDetails";
 import BoundaryDeeds from "../components/adeed/ui/BoundaryDeeds";
 import DeedSidebar from "../components/adeed/ui/DeedSidebar";
 import DeedModals from "../components/adeed/ui/DeedModals";
+import CreateListingPopup from "../components/marketplace-components/CreateListingPopup";
 import type { Certificate } from "../types/certificate";
+import { cancelListing } from "../web3.0/marketService";
+
+const PROPERTY_NFT_ADDRESS = import.meta.env.VITE_PROPERTY_NFT_ADDRESS as string;
 
 const ADeedPage = () => {
   const { deedNumber } = useParams();
@@ -41,6 +45,7 @@ const ADeedPage = () => {
   const [openGetRent, setOpenGetRent] = useState(false);
   const [openMarket, setOpenMarket] = useState(false);
   const [openLastWill, setOpenLastWill] = useState(false);
+  const [showCreateListing, setShowCreateListing] = useState(false);
   const [certificate, setCertificate] = useState<Certificate | null>(null);
 
   useEffect(() => {
@@ -57,20 +62,28 @@ const ADeedPage = () => {
   }, [deed?.tokenId]);
 
   useEffect(() => {
-    if (openTransact || openDirectTransfer || openSaleEscrow || openGiveRent || openGetRent || openMarket || openLastWill) {
+    if (openTransact || openDirectTransfer || openSaleEscrow || openGiveRent || openGetRent || openMarket || openLastWill || showCreateListing) {
       document.body.classList.add("no-scroll");
     } else {
       document.body.classList.remove("no-scroll");
     }
-  }, [openTransact, openDirectTransfer, openSaleEscrow, openGiveRent, openGetRent, openMarket, openLastWill]);
+  }, [openTransact, openDirectTransfer, openSaleEscrow, openGiveRent, openGetRent, openMarket, openLastWill, showCreateListing]);
 
   const handleFractioning = async () => {
     if (deed?.tokenId) {
-      const res = await createFractionalToken(deed?.tokenId, deed?.deedNumber, deed?.deedNumber, 1000000);
-      console.log("Fractioning result:", res);
-      showToast("Fractioning success", "success");
+      try {
+        showLoader();
+        const res = await createFractionalToken(deed?.tokenId, deed?.deedNumber, deed?.deedNumber, 1000000);
+        console.log("Fractioning result:", res);
+        showToast("Fractioning success", "success");
+      } catch (error) {
+        console.error("Fractioning error:", error);
+        showToast("Fractioning failed!", "error");
+      } finally {
+        hideLoader();
+      }
     } else {
-      showToast("Fractioning failed!", "error");
+      showToast("Fractioning failed! No token ID", "error");
     }
   };
 
@@ -97,12 +110,19 @@ const ADeedPage = () => {
     showToast("Blockchain explorer coming soon", "info");
   };
 
-  const handleRemoveMarketListing = async (marketId: string) => {
+  const handleRemoveMarketListing = async (marketId: string, listingId: string) => {
     try {
       showLoader();
-      await deleteMarketPlacesById(marketId);
-      showToast("Listing removed successfully", "success");
-      await getMarketPlaceData();
+      
+      const cancelResult = await cancelListing(Number(listingId));
+      
+      if (cancelResult.success) {
+        await deleteMarketPlacesById(marketId);
+        showToast("Listing removed successfully", "success");
+        await getMarketPlaceData();
+      } else {
+        showToast("Failed to cancel listing on blockchain", "error");
+      }
     } catch (error) {
       console.error("Error removing marketplace listing:", error);
       showToast("Failed to remove listing", "error");
@@ -113,6 +133,18 @@ const ADeedPage = () => {
 
   const handleMarketplaceClose = () => {
     setOpenMarket(false);
+    getMarketPlaceData();
+  };
+
+  const handleCreateListing = () => {
+    if (!deed?.tokenId) {
+      showToast("Cannot create listing: No token ID", "error");
+      return;
+    }
+    setShowCreateListing(true);
+  };
+
+  const handleCreateListingSuccess = () => {
     getMarketPlaceData();
   };
 
@@ -172,7 +204,7 @@ const ADeedPage = () => {
                 onDownload={handleDownload}
                 onShare={handleShare}
                 onViewBlockchain={handleViewBlockchain}
-                onOpenMarket={() => setOpenMarket(true)}
+                onOpenMarket={handleCreateListing}
                 numberOfFT={numberOfFT}
                 onRent={() => setOpenGiveRent(true)}
                 onPowerOfAttorney={() => {}}
@@ -220,7 +252,7 @@ const ADeedPage = () => {
               onDownload={handleDownload}
               onShare={handleShare}
               onViewBlockchain={handleViewBlockchain}
-              onOpenMarket={() => setOpenMarket(true)}
+              onOpenMarket={handleCreateListing}
               numberOfFT={numberOfFT}
               onRent={() => setOpenGiveRent(true)}
               onPowerOfAttorney={() => {}}
@@ -249,6 +281,17 @@ const ADeedPage = () => {
         onCloseMarket={handleMarketplaceClose}
         onCloseLastWill={() => setOpenLastWill(false)}
       />
+
+      {deed.tokenId && (
+        <CreateListingPopup
+          isOpen={showCreateListing}
+          onClose={() => setShowCreateListing(false)}
+          onSuccess={handleCreateListingSuccess}
+          deedId={deed._id}
+          tokenId={deed.tokenId}
+          nftAddress={PROPERTY_NFT_ADDRESS}
+        />
+      )}
     </div>
   );
 };
